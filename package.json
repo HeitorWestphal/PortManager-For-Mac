@@ -1,0 +1,12 @@
+{
+  "name": "port-manager",
+  "version": "1.0.0",
+  "description": "Visual port manager for macOS",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

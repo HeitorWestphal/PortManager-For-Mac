@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Port Manager</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d10;
+    --surface: #17171a;
+    --surface2: #1f1f23;
+    --border: #2a2a2f;
+    --border2: #3a3a40;
+    --text: #e2e2e8;
+    --muted: #8e8e9a;
+    --faint: #48484f;
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,.13);
+    --blue-border: rgba(59,130,246,.28);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,.1);
+    --red-border: rgba(248,113,113,.28);
+    --green: #4ade80;
+    --amber: #fbbf24;
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,.13);
+    --purple-border: rgba(167,139,250,.28);
+    --orange: #fb923c;
+    --orange-dim: rgba(251,146,60,.13);
+    --orange-border: rgba(251,146,60,.28);
+    --teal: #2dd4bf;
+    --teal-dim: rgba(45,212,191,.13);
+    --teal-border: rgba(45,212,191,.28);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  header {
+    -webkit-app-region: drag;
+    padding: 14px 20px 12px 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    flex-shrink: 0;
+    animation: breathe 2.6s ease-in-out infinite;
+  }
+  .live-dot.busy {
+    background: var(--amber);
+    box-shadow: 0 0 6px var(--amber);
+    animation: none;
+  }
+  @keyframes breathe {
+    0%,100% { opacity: 1; }
+    50%      { opacity: .4; }
+  }
+
+  h1 { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -.2px; }
+
+  .badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .actions {
+    -webkit-app-region: no-drag;
+    display: flex;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  button {
+    cursor: pointer;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 12px;
+    transition: background .12s, border-color .12s, opacity .15s;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--border); color: var(--text); }
+
+  .btn-danger {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid var(--red-border);
+  }
+  .btn-danger:hover { background: rgba(248,113,113,.2); }
+  .btn-danger:disabled { opacity: .35; cursor: default; pointer-events: none; }
+
+  /* Filter bar */
+  .filter-bar {
+    flex-shrink: 0;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    -webkit-app-region: no-drag;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 220px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 9px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--faint);
+    pointer-events: none;
+    font-size: 12px;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 10px 6px 28px;
+    font-size: 12px;
+    color: var(--text);
+    font-family: inherit;
+    outline: none;
+    transition: border-color .12s;
+  }
+  .search-input::placeholder { color: var(--faint); }
+  .search-input:focus { border-color: var(--border2); }
+
+  .chips {
+    display: flex;
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .12s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .chip:hover { border-color: var(--border2); color: var(--text); }
+
+  .chip .chip-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .6;
+  }
+
+  .chip.active-all    { background: rgba(255,255,255,.07); border-color: var(--border2); color: #fff; }
+  .chip.active-web    { background: var(--blue-dim);   border-color: var(--blue-border);   color: var(--blue); }
+  .chip.active-db     { background: var(--purple-dim); border-color: var(--purple-border); color: var(--purple); }
+  .chip.active-system { background: var(--orange-dim); border-color: var(--orange-border); color: var(--orange); }
+
+  .chip-count {
+    background: rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Scroll area */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 20px 20px;
+  }
+
+  main::-webkit-scrollbar { width: 6px; }
+  main::-webkit-scrollbar-track { background: transparent; }
+  main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .state-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--faint);
+    padding: 60px 0;
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--muted);
+    border-radius: 50%;
+    animation: spin .65s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    transition: border-color .15s, opacity .25s, transform .2s;
+    cursor: default;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card.fading {
+    opacity: .3;
+    transform: scale(.96);
+    pointer-events: none;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .proc { flex: 1; min-width: 0; }
+
+  /* Primary label: project name or process name */
+  .proc-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+
+  /* Secondary: "node · PID 1234" */
+  .proc-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+  }
+  .proc-exe  { font-size: 11px; color: var(--muted); }
+  .proc-pid  { font-size: 11px; color: var(--faint); }
+  .proc-sep  { font-size: 11px; color: var(--faint); }
+
+  /* Directory path */
+  .proc-dir {
+    font-size: 11px;
+    color: var(--faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+    margin-top: 1px;
+  }
+
+  .cat-tag {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .cat-web    { color: var(--blue);   background: var(--blue-dim);   border-color: var(--blue-border); }
+  .cat-db     { color: var(--purple); background: var(--purple-dim); border-color: var(--purple-border); }
+  .cat-system { color: var(--orange); background: var(--orange-dim); border-color: var(--orange-border); }
+
+  .port-tag {
+    background: var(--blue-dim);
+    border: 1px solid var(--blue-border);
+    color: var(--blue);
+    border-radius: 7px;
+    padding: 3px 9px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  .card-url {
+    font-size: 11px;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .btn-kill {
+    -webkit-app-region: no-drag;
+    width: 100%;
+    background: var(--surface2);
+    color: var(--red);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px;
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .btn-kill:hover { background: var(--red-dim); border-color: var(--red-border); }
+
+  footer {
+    flex-shrink: 0;
+    padding: 8px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--faint);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 40px; left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 9px;
+    padding: 9px 16px;
+    font-size: 12px;
+    color: var(--text);
+    box-shadow: 0 6px 24px rgba(0,0,0,.5);
+    opacity: 0;
+    transition: opacity .18s, transform .18s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 999;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-row">
+    <div class="live-dot" id="dot"></div>
+    <h1>Port Manager</h1>
+    <span class="badge" id="count">—</span>
+  </div>
+  <div class="actions">
+    <button class="btn-ghost" onclick="refresh()">↻ Atualizar</button>
+    <button class="btn-danger" id="kill-all" disabled onclick="killAll()">Fechar Visíveis</button>
+  </div>
+</header>
+
+<div class="filter-bar">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" id="search" type="text" placeholder="Buscar processo ou porta..." oninput="renderVisible()">
+  </div>
+  <div class="chips">
+    <button class="chip active-all" id="chip-all"    onclick="setFilter('all')">
+      <span>Todos</span><span class="chip-count" id="cnt-all">0</span>
+    </button>
+    <button class="chip" id="chip-web"    onclick="setFilter('web')">
+      <span class="chip-dot"></span>Web / Apps<span class="chip-count" id="cnt-web">0</span>
+    </button>
+    <button class="chip" id="chip-db"     onclick="setFilter('db')">
+      <span class="chip-dot"></span>Banco de Dados<span class="chip-count" id="cnt-db">0</span>
+    </button>
+    <button class="chip" id="chip-system" onclick="setFilter('system')">
+      <span class="chip-dot"></span>Sistema<span class="chip-count" id="cnt-system">0</span>
+    </button>
+  </div>
+</div>
+
+<main id="main">
+  <div class="state-view"><div class="spinner"></div><span>Carregando portas...</span></div>
+</main>
+
+<footer>
+  <span id="last-update">—</span>
+  <span>Auto-refresh a cada 5s</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Categorisation ──────────────────────────────────────────────────────────
+
+  const WEB_PROCS = new Set([
+    'node','nodejs','npm','npx','bun','deno',
+    'python','python3','python2','python3.9','python3.10','python3.11','python3.12','python3.13',
+    'uvicorn','gunicorn','flask','django','fastapi','tornado','hypercorn','granian',
+    'ruby','rails','puma','unicorn','thin','sinatra',
+    'java','mvn','gradle','spring',
+    'php','artisan',
+    'go',
+    'cargo',
+    'vite','webpack','parcel','esbuild','rollup','turbopack',
+    'next','nuxt','remix','astro','sveltekit','gatsby',
+    'nginx','apache2','httpd','caddy','traefik',
+    'dart','flutter',
+  ]);
+
+  const DB_PROCS = new Set([
+    'mysqld','mysql','mysqld_safe',
+    'postgres','postgresql','pg_ctl','postmaster',
+    'mongod','mongos',
+    'redis-server','redis',
+    'sqlite','sqlite3',
+    'mariadbd','mariadb',
+    'cassandra',
+    'elasticsearch',
+    'opensearch',
+    'couchdb',
+    'influxd',
+    'clickhouse',
+    'tidb','tikv',
+    'cockroach',
+    'etcd',
+    'minio',
+    'neo4j',
+    'dgraph',
+    'rethinkdb',
+  ]);
+
+  const DB_PORTS = new Set([
+    '3306','33060','5432','27017','27018','27019',
+    '6379','6380','5984','9042','9200','9300',
+    '8086','8123','2379','2380','9000',
+    '7474','7687','8080','5000',
+  ]);
+
+  function categorize(name, port) {
+    const lower = name.toLowerCase();
+    if (DB_PROCS.has(lower)) return 'db';
+    if (DB_PORTS.has(port) && !WEB_PROCS.has(lower)) return 'db';
+    if (WEB_PROCS.has(lower)) return 'web';
+    // heuristic: common dev port ranges often mean web
+    const n = Number(port);
+    if (WEB_PROCS.has(lower.replace(/[\d.]/g, '').replace(/-server$/,'').replace(/-cli$/,''))) return 'web';
+    return 'system';
+  }
+
+  // ── State ───────────────────────────────────────────────────────────────────
+
+  let allPorts = [];
+  let activeFilter = 'all';
+  let toastTimer;
+
+  // ── UI helpers ───────────────────────────────────────────────────────────────
+
+  function toast(msg, ok = true) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.borderColor = ok ? 'rgba(74,222,128,.3)' : 'rgba(248,113,113,.3)';
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  function setFilter(f) {
+    activeFilter = f;
+    ['all','web','db','system'].forEach(k => {
+      const chip = document.getElementById('chip-' + k);
+      chip.className = 'chip' + (k === f ? ' active-' + k : '');
+    });
+    renderVisible();
+  }
+
+  function getSearch() {
+    return document.getElementById('search').value.trim().toLowerCase();
+  }
+
+  function visiblePorts() {
+    const q = getSearch();
+    return allPorts.filter(p => {
+      if (activeFilter !== 'all' && p.cat !== activeFilter) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !p.port.includes(q)) return false;
+      return true;
+    });
+  }
+
+  function catLabel(cat) {
+    if (cat === 'web') return '<span class="cat-tag cat-web">web</span>';
+    if (cat === 'db')  return '<span class="cat-tag cat-db">db</span>';
+    return                    '<span class="cat-tag cat-system">sistema</span>';
+  }
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+  function card(p) {
+    const exe   = esc(p.name);
+    const label = p.label ? esc(p.label) : exe;   // project name or fallback to exe
+    const showExe = p.label && p.label !== p.name; // only show "node" separately if we have a project name
+
+    const metaExe = showExe
+      ? `<span class="proc-exe">${exe}</span><span class="proc-sep">·</span>`
+      : '';
+
+    const dirLine = p.dir
+      ? `<div class="proc-dir" title="${esc(p.dir)}">${esc(p.dir)}</div>`
+      : '';
+
+    return `<div class="card" id="c-${p.pid}-${p.port}">
+      <div class="card-top">
+        <div class="proc">
+          <div class="proc-label" title="${label}">${label}</div>
+          <div class="proc-meta">
+            ${metaExe}
+            <span class="proc-pid">PID ${p.pid}</span>
+            <span class="proc-sep">·</span>
+            ${catLabel(p.cat)}
+          </div>
+          ${dirLine}
+        </div>
+        <div class="port-tag">:${p.port}</div>
+      </div>
+      <div class="card-url">localhost:${p.port}</div>
+      <button class="btn-kill" onclick="killOne('${p.pid}','${p.port}','${esc(p.label || p.name)}')">
+        Desligar processo
+      </button>
+    </div>`;
+  }
+
+  function renderVisible() {
+    const visible = visiblePorts();
+    const main = document.getElementById('main');
+    const killAllBtn = document.getElementById('kill-all');
+    killAllBtn.disabled = visible.length === 0;
+
+    if (allPorts.length === 0) {
+      main.innerHTML = '<div class="state-view"><span style="font-size:32px;margin-bottom:4px">✓</span><span>Nenhuma porta aberta</span></div>';
+      return;
+    }
+
+    if (visible.length === 0) {
+      main.innerHTML = '<div class="state-view"><span style="font-size:24px;margin-bottom:4px">—</span><span>Nenhum resultado para este filtro</span></div>';
+      return;
+    }
+
+    main.innerHTML = '<div class="grid">' + visible.map(card).join('') + '</div>';
+  }
+
+  function updateCounts() {
+    const counts = { all: allPorts.length, web: 0, db: 0, system: 0 };
+    allPorts.forEach(p => counts[p.cat]++);
+    ['all','web','db','system'].forEach(k => {
+      document.getElementById('cnt-' + k).textContent = counts[k];
+    });
+    document.getElementById('count').textContent =
+      allPorts.length + (allPorts.length === 1 ? ' porta' : ' portas');
+    document.getElementById('kill-all').disabled = visiblePorts().length === 0;
+  }
+
+  // ── Data loading ─────────────────────────────────────────────────────────────
+
+  async function loadPorts() {
+    const raw = await window.portManager.getPorts();
+    allPorts = raw.map(p => ({ ...p, cat: categorize(p.name, p.port) }));
+    updateCounts();
+    renderVisible();
+
+    const now = new Date();
+    document.getElementById('last-update').textContent =
+      'Atualizado às ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // ── Actions ──────────────────────────────────────────────────────────────────
+
+  async function killOne(pid, port, name) {
+    const el = document.getElementById(`c-${pid}-${port}`);
+    el.classList.add('fading');
+    const res = await window.portManager.kill(pid);
+    if (res.success) {
+      toast(`${name}:${port} desligado`);
+      setTimeout(loadPorts, 300);
+    } else {
+      el.classList.remove('fading');
+      toast('Erro: ' + res.error, false);
+    }
+  }
+
+  async function killAll() {
+    const visible = visiblePorts();
+    if (!confirm(`Desligar os ${visible.length} processos visíveis?`)) return;
+    const dot = document.getElementById('dot');
+    dot.classList.add('busy');
+    await Promise.all(visible.map(p => window.portManager.kill(p.pid)));
+    dot.classList.remove('busy');
+    toast('Processos desligados');
+    setTimeout(loadPorts, 300);
+  }
+
+  function refresh() {
+    const dot = document.getElementById('dot');
+    dot.classList.add('busy');
+    loadPorts().finally(() => setTimeout(() => dot.classList.remove('busy'), 300));
+  }
+
+  loadPorts();
+  setInterval(loadPorts, 5000);
+</script>
+</body>
+</html>
