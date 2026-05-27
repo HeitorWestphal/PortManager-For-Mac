@@ -128,7 +128,3 @@ macOS only. The app relies on `lsof`, `ps`, and `kill`, as well as macOS-specifi
 A Windows port would require replacing those system calls with `netstat -ano`, `wmic process`, and `taskkill /F /PID`.
 
 ---
-
-## License
-
-MIT
